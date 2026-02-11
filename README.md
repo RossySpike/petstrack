@@ -43,7 +43,7 @@ All endpoints start with **/api/** prefix, currently there are the followings:
 
 ---
 
-- **singin/**:
+- **signin/**:
 
 ```JSON
 {
@@ -97,6 +97,7 @@ All endpoints start with **/api/** prefix, currently there are the followings:
   },
   "errors": [
     { "400": "Bad request / Missing or invalid Authorization header / Invalid JWT" },
+    { "401":  Invalid JWT" },
     { "422": "Missing required fields" },
     { "500": "Failed to create pet / Failed to create ownership relation / Unexpected error" }
   ]
@@ -112,6 +113,47 @@ All endpoints start with **/api/** prefix, currently there are the followings:
 - Creates relationship in ownership table linking user and pet
 
 - Returns empty body on success
+
+---
+
+- **pets/** (GET):
+
+```JSON
+{
+  "method": "GET",
+  "headers": [{ "authorization": "Bearer JWT_TOKEN" }],
+  "response": {
+    "status": 200,
+    "body": [
+      {
+        "id": "number",
+        "name": "string"
+      }
+    ]
+  },
+  "errors": [
+    { "400": "Bad request / Missing Authorization header / Invalid user ID" },
+    { "401": "Invalid JWT" },
+    { "500": "Failed to read ownership / Unexpected error" }
+  ]
+}
+```
+
+**_NOTES_**:
+
+- Returns all pets owned by the authenticated user
+
+- Requires valid JWT token in Authorization header
+
+- Returns array of pet objects with id and name
+
+- User ID is extracted from JWT and parsed to number
+
+- Returns empty array `[]` if user has no pets
+
+- No request body required
+
+- Uses `ownership` table to map users to pets
 
 ---
 

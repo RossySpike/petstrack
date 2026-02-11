@@ -313,6 +313,53 @@ async function signin(url: URL, request: Request) {
   }
   return undefined;
 }
+async function getMyPets(url: URL, request: Request) {
+  if (url.pathname !== "/api/pets" || request.method !== "GET") {
+    return undefined;
+  }
+  // Sanitize req
+  const validation = await validateRequest(request, {
+    headers: [{ key: "authorization" }],
+  });
+  if (!validation.valid) return validation.data;
+  const jwt = extractJWT(request);
+  if (jwt.length === 0)
+    return new Response(`Bad request -->Authorization: Bearer "token"`, {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  const jwtData: Payload | null = await verifyJWT(jwt);
+  if (jwtData === null)
+    return new Response("Invalid jwt", {
+      status: 401,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+    });
+  try {
+    const { data, error } = await SUPABASE.from("ownership")
+      .select(`pets ( id, name )`)
+      .eq("owner", Number(jwtData.userId)); // NOTE: puede lanzar NaN....
+    if (error)
+      return new Response(`Failed to read ownership`, {
+        status: 500,
+        headers: { "Content-Type": "text/plain" },
+      });
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("[-] Something happened while trying to add a pet:");
+    console.error(e);
+    return new Response(`Unexpected error`, {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+}
 
 async function addPet(url: URL, request: Request) {
   if (url.pathname !== "/api/pets" || request.method !== "POST")
@@ -337,7 +384,7 @@ async function addPet(url: URL, request: Request) {
   const jwtData: Payload | null = await verifyJWT(jwt);
   if (jwtData === null)
     return new Response("Invalid jwt", {
-      status: 400,
+      status: 401,
       headers: {
         "Content-Type": "text/plain",
       },
@@ -397,7 +444,7 @@ async function health(url: URL, request: Request) {
 //NOTE: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 const endpoints: Array<
   (url: URL, request: Request) => Promise<unknown | undefined>
-> = [login, signin, addPet, health];
+> = [login, signin, addPet, getMyPets, health];
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
