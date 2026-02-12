@@ -314,6 +314,7 @@ async function signin(url: URL, request: Request) {
   return undefined;
 }
 async function getMyPets(url: URL, request: Request) {
+  //TODO: add response for too many parameters.
   if (url.pathname !== "/api/pets" || request.method !== "GET") {
     return undefined;
   }
@@ -337,15 +338,46 @@ async function getMyPets(url: URL, request: Request) {
         "Content-Type": "text/plain",
       },
     });
-  try {
-    const { data, error } = await SUPABASE.from("ownership")
+
+  // Si introduce parametros
+  let query = SUPABASE.from("ownership")
+    .select(`pets ( id, name )`)
+    .eq("owner", Number(jwtData.userId)); // NOTE: puede lanzar NaN....
+
+  if (url.searchParams.size > 0) {
+    if (!url.searchParams.has("id"))
+      return new Response("Invalid parameters", {
+        status: 400,
+        headers: { "Content-Type": "text/plain" },
+      });
+    const petId = Number(url.searchParams.get("id"));
+    if (isNaN(petId))
+      return new Response("id must be a number", {
+        status: 400,
+        headers: { "Content-Type": "text/plain" },
+      });
+
+    query = SUPABASE.from("ownership")
       .select(`pets ( id, name )`)
-      .eq("owner", Number(jwtData.userId)); // NOTE: puede lanzar NaN....
-    if (error)
+      .eq("owner", Number(jwtData.userId)) // NOTE: puede lanzar NaN....
+      .eq("pet", petId)
+      .single();
+  }
+
+  try {
+    const { data, error } = await query;
+    if (error) {
+      if (error?.code === "PGRST116")
+        return new Response(`Pet not found`, {
+          status: 404,
+          headers: { "Content-Type": "text/plain" },
+        });
+
       return new Response(`Failed to read ownership`, {
         status: 500,
         headers: { "Content-Type": "text/plain" },
       });
+    }
 
     return new Response(JSON.stringify(data), {
       status: 200,
