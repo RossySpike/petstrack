@@ -650,12 +650,49 @@ const endpoints: Array<
   health,
 ];
 
+// TODO: MODIFICAR
+// Al inicio del archivo, antes de Deno.serve
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Max-Age": "86400",
+};
+
+// Modifica Deno.serve para manejar OPTIONS y agregar headers
 Deno.serve(async (req: Request) => {
+  // Manejar preflight OPTIONS
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: CORS_HEADERS,
+    });
+  }
+
   const url = new URL(req.url);
+  let response: Response | undefined;
+
   for (let fn of endpoints) {
     const res = await fn(url, req);
-    if (res !== undefined) return res;
+    if (res !== undefined) {
+      response = res;
+      break;
+    }
   }
-  // Health
-  return new Response("f u", { status: 403 });
+
+  if (!response) {
+    response = new Response("f u", { status: 403 });
+  }
+
+  // Agregar CORS headers a todas las respuestas
+  const newHeaders = new Headers(response.headers);
+  Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+    newHeaders.set(key, value);
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
 });
