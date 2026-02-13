@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PETSTRACK · tus mascotas</title>
+    <style>
+      /* ---------- CSS moderno, limpio, responsive ---------- */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+
+      body {
+        background: linear-gradient(145deg, #f6f9fc 0%, #edf2f7 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1.5rem;
+      }
+
+      .app {
+        max-width: 900px;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 2.5rem;
+        box-shadow: 0 20px 40px -10px rgba(0, 20, 40, 0.15);
+        padding: 2rem 2rem 2.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+      }
+
+      h1,
+      h2 {
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      h1 {
+        font-size: 2rem;
+        background: linear-gradient(135deg, #1a3b4e, #2c5c6b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .sub {
+        color: #4a6f7e;
+        font-weight: 400;
+        font-size: 0.95rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid rgba(44, 92, 107, 0.12);
+        padding-bottom: 0.9rem;
+      }
+
+      /* ---------- LOGIN / AUTH FORMS ---------- */
+      .auth-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.8rem;
+        justify-content: center;
+        margin: 1rem 0 1.2rem;
+      }
+
+      .auth-card {
+        background: white;
+        padding: 1.8rem 1.8rem 2rem;
+        border-radius: 1.8rem;
+        box-shadow: 0 6px 0 rgba(0, 0, 0, 0.02);
+        flex: 1 1 260px;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        transition: all 0.2s;
+      }
+
+      .auth-card h3 {
+        font-size: 1.3rem;
+        margin-bottom: 1.5rem;
+        color: #1e3b4a;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .input-group {
+        margin-bottom: 1.1rem;
+      }
+
+      .input-group label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 600;
+        color: #2c5c6b;
+        margin-bottom: 0.3rem;
+      }
+
+      .input-group input {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border: 1.5px solid #dce9ef;
+        border-radius: 1.2rem;
+        font-size: 0.95rem;
+        background: #fafeff;
+        transition: 0.15s;
+      }
+
+      .input-group input:focus {
+        border-color: #2c5c6b;
+        outline: none;
+        background: white;
+        box-shadow: 0 0 0 4px rgba(44, 92, 107, 0.06);
+      }
+
+      .btn {
+        background: #1e3b4a;
+        color: white;
+        font-weight: 600;
+        padding: 0.8rem 1.8rem;
+        border: none;
+        border-radius: 2rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: 0.15s;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 0 #0f232b;
+        width: 100%;
+        letter-spacing: 0.3px;
+      }
+
+      .btn:hover {
+        background: #265a68;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 0 #0f232b;
+      }
+
+      .btn:active {
+        transform: translateY(6px);
+        box-shadow: 0 4px 0 #0f232b;
+      }
+
+      .btn-small {
+        background: #2c5c6b;
+        box-shadow: 0 4px 0 #1a3a44;
+        padding: 0.55rem 1.2rem;
+        font-size: 0.8rem;
+      }
+
+      .btn-small:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0 #1a3a44;
+      }
+
+      /* ---------- PANEL MASCOTAS (rectángulos) ---------- */
+      .pets-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        margin: 1.8rem 0 1.2rem;
+      }
+
+      .pet-card {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 1.2rem 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 6px 0 #cbd5e0;
+        border: 1px solid #edf2f7;
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+
+      .pet-card:hover {
+        background: #f9fcff;
+        border-color: #a0c4cf;
+        transform: scale(1.01);
+      }
+
+      .pet-name {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #1e3b4a;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .pet-badge {
+        background: #d4e6ed;
+        padding: 0.2rem 0.8rem;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #1a3b4e;
+      }
+
+      /* ---------- PANEL ACTIVIDADES ---------- */
+      .selected-header {
+        background: #e6f0f3;
+        border-radius: 1.5rem;
+        padding: 1.2rem 1.8rem;
+        margin: 1.5rem 0 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-left: 6px solid #2c5c6b;
+      }
+
+      .back-btn {
+        background: none;
+        border: 2px solid #2c5c6b;
+        color: #1e3b4a;
+        font-weight: 600;
+        padding: 0.4rem 1.2rem;
+        border-radius: 2.5rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+      }
+
+      .activities-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        margin-top: 0.8rem;
+        max-height: 380px;
+        overflow-y: auto;
+        padding-right: 0.4rem;
+      }
+
+      .activity-item {
+        background: white;
+        border-radius: 1.2rem;
+        padding: 1rem 1.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid #e2eef2;
+        transition: 0.1s;
+      }
+
+      .activity-item.completed {
+        background: #e9ecef;
+        opacity: 0.8;
+        filter: grayscale(0.3);
+        border-color: #bac8cc;
+      }
+
+      .activity-info h4 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e3b4a;
+      }
+
+      .activity-info p {
+        font-size: 0.8rem;
+        color: #4f6f7c;
+        margin-top: 0.2rem;
+      }
+
+      .progress-badge {
+        background: #def0f2;
+        padding: 0.3rem 0.9rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: #0f494e;
+      }
+
+      .btn-progress {
+        background: #3d7a8c;
+        border: none;
+        color: white;
+        font-weight: 700;
+        padding: 0.5rem 1.2rem;
+        border-radius: 2rem;
+        font-size: 0.9rem;
+        box-shadow: 0 3px 0 #1f4853;
+        cursor: pointer;
+        transition: 0.06s;
+      }
+
+      .btn-progress:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 #1f4853;
+      }
+
+      .btn-progress:disabled {
+        opacity: 0.5;
+        box-shadow: none;
+        transform: none;
+        pointer-events: none;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #5a7a86;
+        font-style: italic;
+      }
+
+      .logout-btn {
+        background: none;
+        border: 1.5px solid #accad1;
+        color: #1a3b4e;
+        padding: 0.4rem 1.2rem;
+        border-radius: 2rem;
+        font-weight: 500;
+        float: right;
+        cursor: pointer;
+      }
+
+      hr {
+        border: 1px solid #cbdbe0;
+        margin: 1.5rem 0 0.5rem;
+      }
+
+      .token-hidden {
+        display: none;
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #dbe9ed;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2c5c6b;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app" id="app">
+      <!-- cabecera -->
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+        "
+      >
+        <h1>🐾 PETSTRACK</h1>
+        <button id="logoutBtn" class="logout-btn" style="display: none">
+          ⤿ salir
+        </button>
+      </div>
+      <div class="sub">compañía silenciosa · progreso simple</div>
+
+      <!-- ========== AUTH SECTION ========== -->
+      <div id="authSection">
+        <div class="auth-container">
+          <!-- LOGIN -->
+          <div class="auth-card">
+            <h3>🔐 iniciar sesión</h3>
+            <div class="input-group">
+              <label>email</label>
+              <input
+                type="email"
+                id="loginEmail"
+                placeholder="tu@email.com"
+                autocomplete="off"
+              />
+            </div>
+            <div class="input-group">
+              <label>contraseña</label>
+              <input type="password" id="loginPass" placeholder="••••••••" />
+            </div>
+            <button id="loginBtn" class="btn">ingresar</button>
+            <p
+              id="loginError"
+              style="
+                color: #b33;
+                font-size: 0.75rem;
+                margin-top: 1rem;
+                min-height: 1.2rem;
+              "
+            ></p>
+          </div>
+          <!-- SIGNIN -->
+          <div class="auth-card">
+            <h3>📝 crear cuenta</h3>
+            <div class="input-group">
+              <label>nombre</label>
+              <input type="text" id="signName" placeholder="tu nombre" />
+            </div>
+            <div class="input-group">
+              <label>email</label>
+              <input type="email" id="signEmail" placeholder="email" />
+            </div>
+            <div class="input-group">
+              <label>contraseña</label>
+              <input type="password" id="signPass" placeholder="••••••••" />
+            </div>
+            <button id="signinBtn" class="btn">registrarse</button>
+            <p
+              id="signError"
+              style="color: #b33; font-size: 0.75rem; margin-top: 1rem"
+            ></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PANEL MASCOTAS (logueado) ========== -->
+      <div id="petsSection" style="display: none">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0 0.2rem;
+          "
+        >
+          <h2 style="font-size: 1.6rem; color: #1e3b4a">🐕 tus mascotas</h2>
+          <!-- (más adelante: form crear mascota simple) -->
+        </div>
+        <!-- mini form nueva mascota -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem">
+          <input
+            type="text"
+            id="newPetName"
+            placeholder="nombre del nuevo amigo"
+            style="
+              flex: 1;
+              padding: 0.7rem 1.2rem;
+              border-radius: 2rem;
+              border: 1.5px solid #d4e2e9;
+            "
+          />
+          <button id="addPetBtn" class="btn-small" style="width: auto">
+            + agregar
+          </button>
+        </div>
+        <!-- contenedor mascotas -->
+        <div id="petsList" class="pets-grid"></div>
+        <p id="petsError" style="color: #b33; font-size: 0.8rem"></p>
+      </div>
+
+      <!-- ========== PANEL ACTIVIDADES (mascota seleccionada) ========== -->
+      <div id="activitySection" style="display: none">
+        <div id="selectedPetHeader" class="selected-header">
+          <!-- se llena con js -->
+        </div>
+        <div id="activitiesContainer" class="activities-list"></div>
+        <p
+          id="activityError"
+          style="color: #b33; font-size: 0.8rem; margin-top: 0.8rem"
+        ></p>
+
+        <!-- mini formulario para nueva actividad (sencillo) -->
+        <div
+          style="
+            margin-top: 1.8rem;
+            background: #f0f6f9;
+            padding: 1.3rem;
+            border-radius: 1.5rem;
+          "
+        >
+          <h4 style="margin-bottom: 0.8rem; color: #1e3b4a">
+            ➕ nueva actividad
+          </h4>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.6rem">
+            <input
+              type="text"
+              id="newActName"
+              placeholder="ej: paseo"
+              style="
+                flex: 2;
+                min-width: 140px;
+                padding: 0.7rem 1rem;
+                border-radius: 2rem;
+                border: 1.5px solid #c8dce3;
+              "
+            />
+            <input
+              type="number"
+              id="newActTimes"
+              placeholder="veces"
+              value="10"
+              min="1"
+              style="
+                width: 85px;
+                padding: 0.7rem;
+                border-radius: 2rem;
+                border: 1.5px solid #c8dce3;
+              "
+            />
+            <input
+              type="text"
+              id="newActDesc"
+              placeholder="descripción (opcional)"
+              style="
+                flex: 2;
+                padding: 0.7rem 1rem;
+                border-radius: 2rem;
+                border: 1.5px solid #c8dce3;
+              "
+            />
+            <button
+              id="createActivityBtn"
+              class="btn-small"
+              style="background: #2c5c6b; box-shadow: 0 4px 0 #1a3a44"
+            >
+              crear
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // ---------- CONST ----------
+        const API_BASE = "https://petstrack.deno.dev"; // mismo origen (relativo)
+        let JWT_TOKEN = localStorage.getItem("pettrack_token") || "";
+
+        // ---------- DOM elements ----------
+        const authSection = document.getElementById("authSection");
+        const petsSection = document.getElementById("petsSection");
+        const activitySection = document.getElementById("activitySection");
+        const logoutBtn = document.getElementById("logoutBtn");
+
+        // login / sign
+        const loginEmail = document.getElementById("loginEmail");
+        const loginPass = document.getElementById("loginPass");
+        const loginBtn = document.getElementById("loginBtn");
+        const loginError = document.getElementById("loginError");
+        const signName = document.getElementById("signName");
+        const signEmail = document.getElementById("signEmail");
+        const signPass = document.getElementById("signPass");
+        const signinBtn = document.getElementById("signinBtn");
+        const signError = document.getElementById("signError");
+
+        // pets
+        const petsList = document.getElementById("petsList");
+        const newPetName = document.getElementById("newPetName");
+        const addPetBtn = document.getElementById("addPetBtn");
+        const petsError = document.getElementById("petsError");
+
+        // activities
+        const selectedPetHeader = document.getElementById("selectedPetHeader");
+        const activitiesContainer = document.getElementById(
+          "activitiesContainer",
+        );
+        const activityError = document.getElementById("activityError");
+        const newActName = document.getElementById("newActName");
+        const newActTimes = document.getElementById("newActTimes");
+        const newActDesc = document.getElementById("newActDesc");
+        const createActivityBtn = document.getElementById("createActivityBtn");
+
+        // estado actual
+        let currentUserId = null;
+        let currentPets = [];
+        let selectedPetId = null;
+        let selectedPetName = "";
+
+        // ---------- UTILS ----------
+        async function request(endpoint, options = {}) {
+          const headers = {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+          };
+          if (JWT_TOKEN) {
+            headers["Authorization"] = `Bearer ${JWT_TOKEN}`;
+          }
+          const res = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          let data;
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            data = await res.json();
+          } else {
+            data = await res.text();
+          }
+          return { res, data };
+        }
+
+        // manejo de JWT
+        function setToken(token) {
+          JWT_TOKEN = token;
+          localStorage.setItem("pettrack_token", token);
+        }
+        function clearToken() {
+          JWT_TOKEN = "";
+          localStorage.removeItem("pettrack_token");
+        }
+
+        // decodificar payload simple (solo para leer userId)
+        function parseJwt(token) {
+          try {
+            const base64Url = token.split(".")[1];
+            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split("")
+                .map(
+                  (c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2),
+                )
+                .join(""),
+            );
+            return JSON.parse(jsonPayload);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        // ---------- VISTAS ----------
+        function showAuth() {
+          authSection.style.display = "block";
+          petsSection.style.display = "none";
+          activitySection.style.display = "none";
+          logoutBtn.style.display = "none";
+        }
+        function showPets() {
+          authSection.style.display = "none";
+          petsSection.style.display = "block";
+          activitySection.style.display = "none";
+          logoutBtn.style.display = "block";
+          loadPets();
+        }
+        function showActivities(petId, petName) {
+          selectedPetId = petId;
+          selectedPetName = petName;
+          authSection.style.display = "none";
+          petsSection.style.display = "none";
+          activitySection.style.display = "block";
+          logoutBtn.style.display = "block";
+          // header
+          selectedPetHeader.innerHTML = `
+            <span style="display:flex; align-items:center; gap:6px;"><span style="font-size:1.8rem;">🐶</span> <strong style="font-size:1.5rem;">${petName}</strong> <span style="background:#fff; padding:0.2rem 0.7rem; border-radius:40px; font-size:0.75rem;">#${petId}</span></span>
+            <button id="backToPetsBtn" class="back-btn">← volver</button>
+          `;
+          document
+            .getElementById("backToPetsBtn")
+            .addEventListener("click", () => {
+              showPets();
+            });
+          loadActivities(petId);
+        }
+
+        // ---------- LOGIN ----------
+        loginBtn.addEventListener("click", async () => {
+          const email = loginEmail.value.trim();
+          const pass = loginPass.value.trim();
+          if (!email || !pass) {
+            loginError.innerText = "email y contraseña requeridos";
+            return;
+          }
+          loginError.innerText = "";
+          try {
+            const { res, data } = await request("/api/login", {
+              method: "POST",
+              body: JSON.stringify({ email, pass }),
+            });
+            if (res.status === 200) {
+              setToken(data); // token texto plano
+              const payload = parseJwt(data);
+              if (payload?.userId) currentUserId = payload.userId;
+              showPets();
+              loginEmail.value = "";
+              loginPass.value = "";
+              loginError.innerText = "";
+            } else {
+              loginError.innerText = data || "credenciales inválidas";
+            }
+          } catch (e) {
+            loginError.innerText = "error de conexión";
+          }
+        });
+
+        // ---------- SIGNIN ----------
+        signinBtn.addEventListener("click", async () => {
+          const name = signName.value.trim();
+          const email = signEmail.value.trim();
+          const pass = signPass.value.trim();
+          if (!name || !email || !pass) {
+            signError.innerText = "completa todos los campos";
+            return;
+          }
+          signError.innerText = "";
+          try {
+            const { res, data } = await request("/api/signin", {
+              method: "POST",
+              body: JSON.stringify({ name, email, pass }),
+            });
+            if (res.status === 201) {
+              setToken(data);
+              const payload = parseJwt(data);
+              if (payload?.userId) currentUserId = payload.userId;
+              showPets();
+              signName.value = "";
+              signEmail.value = "";
+              signPass.value = "";
+              signError.innerText = "";
+            } else {
+              signError.innerText =
+                typeof data === "string" ? data : "error al crear cuenta";
+            }
+          } catch (e) {
+            signError.innerText = "error de red";
+          }
+        });
+
+        // ---------- CREAR MASCOTAS ----------
+
+        addPetBtn.addEventListener("click", async () => {
+          if (!JWT_TOKEN) return showAuth();
+          if (newPetName.value.trim().length0 === 0) {
+            signError.innerText = "Introduce un nombre";
+            return;
+          }
+
+          try {
+            const { res, data } = await request("/api/pets", {
+              method: "POST",
+              body: JSON.stringify({ name: newPetName.value.trim() }),
+            });
+            if (res.status === 201) {
+              // ✅ NORMALIZAR: extraer pets del formato { pets: { id, name } }
+
+              loadPets();
+            } else if (res.status === 401) {
+              clearToken();
+              showAuth();
+            } else {
+              petsError.innerText = "no se pudieron cargar las mascotas";
+            }
+          } catch (e) {
+            petsError.innerText = "error al cargar";
+          }
+        });
+
+        // ---------- CARGAR MASCOTAS ----------
+        // Reemplaza la función renderPets y la función loadActivities
+
+        // ---------- CARGAR MASCOTAS (lista) ----------
+        async function loadPets() {
+          if (!JWT_TOKEN) return showAuth();
+          try {
+            const { res, data } = await request("/api/pets", { method: "GET" });
+            if (res.status === 200) {
+              // ✅ NORMALIZAR: extraer pets del formato { pets: { id, name } }
+              currentPets = Array.isArray(data)
+                ? data.map((item) =>
+                    item.pets
+                      ? { id: item.pets.id, name: item.pets.name }
+                      : item,
+                  )
+                : [];
+              renderPets(currentPets);
+              petsError.innerText = "";
+            } else if (res.status === 401) {
+              clearToken();
+              showAuth();
+            } else {
+              petsError.innerText = "no se pudieron cargar las mascotas";
+            }
+          } catch (e) {
+            petsError.innerText = "error al cargar";
+          }
+        }
+
+        function renderPets(pets) {
+          if (!pets.length) {
+            petsList.innerHTML = `<div class="empty-state">✨ aún no tienes mascotas · agrega una</div>`;
+            return;
+          }
+
+          let html = "";
+          pets.forEach((pet) => {
+            html += `
+        <div class="pet-card" data-pet-id="${pet.id}" data-pet-name="${pet.name}">
+          <span class="pet-name">🐾 ${pet.name}</span>
+          <span class="pet-badge">ID ${pet.id}</span>
+        </div>
+      `;
+          });
+          petsList.innerHTML = html;
+
+          document.querySelectorAll(".pet-card").forEach((el) => {
+            el.addEventListener("click", (e) => {
+              const id = el.dataset.petId;
+              const name = el.dataset.petName;
+              showActivities(parseInt(id), name);
+            });
+          });
+        }
+
+        // ---------- CARGAR ACTIVIDADES (por mascota) ----------
+        async function loadActivities(petId) {
+          if (!JWT_TOKEN || !petId) return;
+          activityError.innerText = "";
+          try {
+            const { res, data } = await request(`/api/pets?id=${petId}`, {
+              method: "GET",
+            });
+            if (res.status === 200) {
+              // ✅ ESTRUCTURA RECIBIDA:
+              // {
+              //   owner: 4,
+              //   pet: 1,
+              //   pets: {
+              //     id: 1,
+              //     name: "perro de pepe",
+              //     activity: [ ... ]
+              //   }
+              // }
+
+              const petData = data.pets;
+              const activities = petData.activity || [];
+
+              // Actualizar header con info de la mascota
+              selectedPetId = petId;
+              selectedPetName = petData.name;
+
+              selectedPetHeader.innerHTML = `
+          <span style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:1.8rem;">🐶</span>
+            <strong style="font-size:1.5rem;">${petData.name}</strong>
+            <span style="background:#fff; padding:0.2rem 0.7rem; border-radius:40px; font-size:0.75rem;">#${petData.id}</span>
+          </span>
+          <button id="backToPetsBtn" class="back-btn">← volver</button>
+        `;
+              document
+                .getElementById("backToPetsBtn")
+                ?.addEventListener("click", () => {
+                  showPets();
+                });
+
+              renderActivities(activities);
+            } else if (res.status === 404) {
+              activityError.innerText =
+                "mascota no encontrada o no te pertenece";
+            } else {
+              activityError.innerText = "error al cargar actividades";
+            }
+          } catch (e) {
+            activityError.innerText = "error de red";
+          }
+        }
+
+        function renderActivities(activities) {
+          if (!activities || activities.length === 0) {
+            activitiesContainer.innerHTML = `<div class="empty-state">📭 esta mascota no tiene actividades · crea una</div>`;
+            return;
+          }
+
+          let html = "";
+          activities.forEach((act) => {
+            const progress = act.progress ?? 0;
+            const times = act.times ?? 1;
+            const completed = act.completed || progress >= times;
+            const percent = Math.min(100, Math.floor((progress / times) * 100));
+
+            html += `
+        <div class="activity-item ${completed ? "completed" : ""}" data-activity-id="${act.id}">
+          <div class="activity-info">
+            <h4>${act.name} ${act.description ? "· " + act.description : ""}</h4>
+            <p style="display:flex; gap:0.5rem; align-items:center;">
+              <span class="progress-badge">${progress}/${times}</span>
+              <span style="font-size:0.7rem; background:#e2eaee; padding:0.2rem 0.6rem; border-radius:20px;">
+                ${percent}%
+              </span>
+            </p>
+          </div>
+          ${!completed ? `<button class="btn-progress" data-act-id="${act.id}">+1 progreso</button>` : ""}
+        </div>
+      `;
+          });
+
+          activitiesContainer.innerHTML = html;
+
+          // botones incrementar
+          document.querySelectorAll(".btn-progress").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              const actId = btn.dataset.actId;
+              await incrementProgress(actId);
+            });
+          });
+        }
+        // ---------- INCREMENTAR PROGRESO (RPC) ----------
+        async function incrementProgress(activityId) {
+          if (!JWT_TOKEN) return;
+          try {
+            const { res, data } = await request(
+              "/api/activity/increment?id=" + activityId,
+              {
+                method: "POST",
+                body: JSON.stringify({}),
+              },
+            );
+            if (res.status === 200) {
+              // recargar actividades de la mascota seleccionada
+              if (selectedPetId) loadActivities(selectedPetId);
+            } else {
+              let msg =
+                typeof data === "string" ? data : "no se pudo incrementar";
+              if (res.status === 400) alert("actividad ya completada");
+              else if (res.status === 403) alert("no eres el starter");
+              else if (res.status === 404) alert("actividad no encontrada");
+              else alert(msg);
+            }
+          } catch (e) {
+            alert("error al conectar");
+          }
+        }
+
+        // ---------- CREAR ACTIVIDAD ----------
+        createActivityBtn.addEventListener("click", async () => {
+          if (!selectedPetId) return;
+          const name = newActName.value.trim();
+          const times = newActTimes.value.trim();
+          const desc = newActDesc.value.trim();
+          if (!name || !times) {
+            activityError.innerText = "nombre y veces requeridos";
+            return;
+          }
+          activityError.innerText = "";
+          try {
+            const { res } = await request("/api/activity", {
+              method: "POST",
+              body: JSON.stringify({
+                pet: String(selectedPetId),
+                name: name,
+                times: String(times),
+                description: desc || undefined,
+              }),
+            });
+            if (res.status === 201) {
+              newActName.value = "";
+              newActTimes.value = "10";
+              newActDesc.value = "";
+              loadActivities(selectedPetId);
+            } else if (res.status === 403) {
+              activityError.innerText = "no eres dueño de esta mascota";
+            } else {
+              activityError.innerText = "error al crear actividad";
+            }
+          } catch (e) {
+            activityError.innerText = "error de red";
+          }
+        });
+
+        // ---------- LOGOUT ----------
+        logoutBtn.addEventListener("click", () => {
+          clearToken();
+          currentUserId = null;
+          selectedPetId = null;
+          showAuth();
+        });
+
+        // ---------- INICIO: sesión activa? ----------
+        async function init() {
+          if (JWT_TOKEN) {
+            const payload = parseJwt(JWT_TOKEN);
+            if (payload?.userId && payload.exp * 1000 > Date.now()) {
+              currentUserId = payload.userId;
+              showPets();
+            } else {
+              clearToken();
+              showAuth();
+            }
+          } else {
+            showAuth();
+          }
+        }
+        init();
+      })();
+    </script>
+  </body>
+</html>

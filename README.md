@@ -116,6 +116,64 @@ All endpoints start with **/api/** prefix, currently there are the followings:
 
 ---
 
+- **pets/?id={petId}**:
+
+```JSON
+{
+  "method": "GET",
+  "headers": [{ "authorization": "Bearer JWT_TOKEN" }],
+  "query": {
+    "id": "number (required)"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "pet": {
+        "id": "number",
+        "name": "string"
+      },
+      "activities": [
+        {
+          "id": "number",
+          "name": "string",
+          "description": "string",
+          "times": "number",
+          "progress": "number",
+          "completed": "boolean",
+          "created_at": "timestamp"
+        }
+      ]
+    }
+  },
+  "errors": [
+    { "400": "Bad request / Missing Authorization header / id must be a number / Invalid parameters" },
+    { "401": "Invalid JWT" },
+    { "404": "Pet not found or you don't own it" },
+    { "500": "Failed to read ownership / Unexpected error" }
+  ]
+}
+```
+
+**_NOTES:_**
+
+- Returns a specific pet owned by the authenticated user along with ALL its activities
+
+- Requires valid JWT token in Authorization header
+
+- Single query: Uses nested select with `pets!inner` to validate ownership AND fetch activities in one database call
+
+- Activities are automatically ordered by `created_at` in descending order (newest first)
+
+- The `id` query parameter is required and must be numeric
+
+- Returns 404 if pet doesn't exist or user doesn't own it (PGRST116)
+
+- Response structure: `{ pet: { id, name }, activities: [...] }`
+
+- Returns empty array `[]` if pet has no activities
+
+---
+
 - **pets/** (GET):
 
 ```JSON
@@ -154,6 +212,67 @@ All endpoints start with **/api/** prefix, currently there are the followings:
 - No request body required
 
 - Uses `ownership` table to map users to pets
+
+  ***
+
+- **activity/** (POST):
+
+```json
+{
+  "method": "POST",
+  "headers": [
+    { "content-type": "application/json" },
+    { "authorization": "Bearer JWT_TOKEN" }
+  ],
+  "body": {
+    "pet": "string (number as string)",
+    "name": "string",
+    "times": "string (number as string)",
+    "description": "string (optional)"
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "id": "number",
+      "starter": "number",
+      "pet": "number",
+      "name": "string",
+      "description": "string",
+      "times": "number",
+      "progress": "number",
+      "completed": "boolean",
+      "created_at": "timestamp"
+    }
+  },
+  "errors": [
+    {
+      "400": "Bad request / pet must be a number / times must be a number / Name cannot be empty / Missing or invalid Authorization header"
+    },
+    { "401": "Invalid JWT" },
+    { "403": "You are not the owner of this pet (trigger validation)" },
+    { "422": "Missing required fields / Invalid JSON body" },
+    { "500": "Failed to create activity / Unexpected error" }
+  ]
+}
+```
+
+**_NOTES_**:
+
+- Creates a new activity for a specific `pet` owned by the authenticated user
+
+- Requires valid JWT token in Authorization header
+
+- `pet` and `times` are received as strings but must be numeric values (automatically converted)
+
+- `description` is optional, defaults to empty string
+
+- `progress` defaults to 0, `completed` defaults to false
+
+- Database trigger validation: Automatically verifies that the authenticated user (`starter`) actually owns the `pet` via `ownership` table
+
+- Returns the complete created activity object on success
+
+- Returns 403 if the trigger detects the user doesn't own the specified `pet`
 
 ---
 

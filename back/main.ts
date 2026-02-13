@@ -358,15 +358,39 @@ async function getMyPets(url: URL, request: Request) {
       });
 
     query = SUPABASE.from("ownership")
-      .select(`pets ( id, name )`)
-      .eq("owner", Number(jwtData.userId)) // NOTE: puede lanzar NaN....
+      .select(
+        `
+    owner,
+    pet,
+    pets!inner (
+      id,
+      name,
+      activity (
+        id,
+        name,
+        description,
+        times,
+        progress,
+        completed,
+        created_at
+      )
+    )
+  `,
+      )
+      .eq("owner", Number(jwtData.userId))
       .eq("pet", petId)
+      .order("created_at", {
+        foreignTable: "pets.activity",
+        ascending: false,
+      })
       .single();
   }
+  /**/
 
   try {
     const { data, error } = await query;
     if (error) {
+      console.log(error);
       if (error?.code === "PGRST116")
         return new Response(`Pet not found`, {
           status: 404,
@@ -461,13 +485,153 @@ async function addPet(url: URL, request: Request) {
   }
 }
 
+async function addActivity(url: URL, request: Request) {
+  if (url.pathname !== "/api/activity" || request.method !== "POST") {
+    return undefined;
+  }
+  // Sanitize req
+  const validation = await validateRequest(request, {
+    headers: [
+      { key: "content-type", value: "application/json" },
+      { key: "authorization" },
+    ],
+    body: [
+      { key: "pet", type: "string" },
+      { key: "name", type: "string" },
+      { key: "times", type: "string" },
+    ],
+  });
+
+  if (!validation.valid) {
+    return validation.data;
+  }
+
+  if (isNaN((validation.data.pet = Number(validation.data.pet))))
+    return new Response("pet must be a number", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+  if (isNaN((validation.data.times = Number(validation.data.times))))
+    return new Response("times must be a number", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+  if (validation.data.name.trim().length === 0)
+    return new Response("Name cannot be empty", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+  if (
+    validation.data.description &&
+    validation.data.description.trim().length === 0
+  )
+    return new Response(`Bad request -->description:string`, {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  const jwt = extractJWT(request);
+  if (jwt.length === 0)
+    return new Response(`Bad request -->Authorization: Bearer "token"`, {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  const jwtData: Payload | null = await verifyJWT(jwt);
+  if (jwtData === null)
+    return new Response("Invalid jwt", {
+      status: 401,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+    });
+  //NOTE: ver otra forma
+  const vData = validation.data;
+  const payload = {
+    starter: Number(jwtData.userId),
+    pet: vData.pet,
+    name: vData.name,
+    description: vData.description ?? "",
+    times: vData.times,
+  };
+  // Crear actividad
+  try {
+    const { data, error } = await SUPABASE.from("activity")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) {
+      if (error?.code === "P0001")
+        return new Response(`You are not the owner of this pet`, {
+          status: 403,
+          headers: { "Content-Type": "text/plain" },
+        });
+
+      return new Response(`Failed to activity`, {
+        status: 500,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+    return new Response(JSON.stringify(data), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error(
+      "[-] Something happened while trying to insert into activity:",
+    );
+    console.error(e);
+    return new Response(`Unexpected error`, {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+}
+// IA:
+async function incrementActivityProgress(url: URL, request: Request) {
+  if (url.pathname !== "/api/activity/increment" || request.method !== "POST")
+    return undefined;
+
+  const jwt = extractJWT(request);
+  if (!jwt) return new Response("Missing token", { status: 400 });
+
+  const jwtData = await verifyJWT(jwt);
+  if (!jwtData) return new Response("Invalid jwt", { status: 401 });
+
+  const activityId = Number(url.searchParams.get("id"));
+  if (isNaN(activityId))
+    return new Response("Invalid activity id", { status: 400 });
+
+  try {
+    // 🚀 UNA SOLA QUERY - INCREMENTO REAL EN BD
+    const { data, error } = await SUPABASE.rpc("increment_progress", {
+      activity_id: activityId,
+      user_id: Number(jwtData.userId),
+    });
+
+    if (error) {
+      if (error.message.includes("not found")) {
+        return new Response("Activity not found or unauthorized", {
+          status: 404,
+        });
+      }
+      return new Response("Failed to increment", { status: 500 });
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    return new Response("Unexpected error", { status: 500 });
+  }
+}
+
 async function health(url: URL, request: Request) {
   if (url.pathname === "/api/health" && request.method === "GET") {
     const { data, error } = await SUPABASE.from("pets").select("id");
 
-    const db = error
-      ? `Connection failed: ${error?.message}`
-      : "Connected to db";
+    const db = error ? `Connection failed` : "Connected to db";
     return new Response(`Server: Alive\nDb: ${db}`, { status: 200 });
   }
   return undefined;
@@ -476,7 +640,15 @@ async function health(url: URL, request: Request) {
 //NOTE: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 const endpoints: Array<
   (url: URL, request: Request) => Promise<unknown | undefined>
-> = [login, signin, addPet, getMyPets, health];
+> = [
+  login,
+  signin,
+  addPet,
+  getMyPets,
+  addActivity,
+  incrementActivityProgress,
+  health,
+];
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
