@@ -425,7 +425,6 @@ async function getMyPets(url: URL, request: Request) {
   try {
     const { data, error } = await query;
     if (error) {
-      console.log(error);
       if (error?.code === "PGRST116")
         return new Response(`Pet not found`, {
           status: 404,
@@ -438,11 +437,9 @@ async function getMyPets(url: URL, request: Request) {
       });
     }
 
-    console.log(data);
     if (!Array.isArray(data) && "activity" in data?.pets) {
       data.pets.activity = data.pets.activity.filter((a) => !a.deleted);
     }
-    console.log(data);
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -710,8 +707,6 @@ async function deleteActivity(url: URL, request: Request) {
     });
 
     if (error) {
-      console.log(error);
-
       // Manejar errores específicos
       if (error.message.includes("not found")) {
         return new Response("Activity not found", {
