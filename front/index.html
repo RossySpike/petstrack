@@ -231,6 +231,16 @@
         font-size: 0.8rem;
         cursor: pointer;
       }
+      .add-owner-btn {
+        background: none;
+        border: 2px solid #2c5c6b;
+        color: #1e3b4a;
+        font-weight: 600;
+        padding: 0.4rem 1.2rem;
+        border-radius: 2.5rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+      }
 
       .activities-list {
         display: flex;
@@ -344,6 +354,33 @@
         background: #2c5c6b;
         border-radius: 10px;
       }
+      .btn-remove-owner,
+      .btn-delete {
+        background: #dc3545;
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 0.5rem 0.8rem;
+        border-radius: 2rem;
+        font-size: 0.9rem;
+        box-shadow: 0 3px 0 #a11f2b;
+        cursor: pointer;
+        transition: 0.06s;
+        min-width: 45px;
+      }
+
+      .btn-remove-owner:hover,
+      .btn-delete:hover {
+        background: #c82333;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 0 #a11f2b;
+      }
+
+      .btn-remove-owner:hover,
+      .btn-delete:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 #a11f2b;
+      }
     </style>
   </head>
   <body>
@@ -361,6 +398,7 @@
           ⤿ salir
         </button>
       </div>
+      <span id="userData"></span>
       <div class="sub">compañía silenciosa · progreso simple</div>
 
       <!-- ========== AUTH SECTION ========== -->
@@ -521,6 +559,9 @@
             </button>
           </div>
         </div>
+        <button id="deleteOwnership" class="btn-remove-owner">
+          Dejar de ser dueño
+        </button>
       </div>
     </div>
 
@@ -537,6 +578,7 @@
         const petsSection = document.getElementById("petsSection");
         const activitySection = document.getElementById("activitySection");
         const logoutBtn = document.getElementById("logoutBtn");
+        const userData = document.getElementById("userData");
 
         // login / sign
         const loginEmail = document.getElementById("loginEmail");
@@ -554,6 +596,7 @@
         const newPetName = document.getElementById("newPetName");
         const addPetBtn = document.getElementById("addPetBtn");
         const petsError = document.getElementById("petsError");
+        const deleteOwnership = document.getElementById("deleteOwnership");
 
         // activities
         const selectedPetHeader = document.getElementById("selectedPetHeader");
@@ -647,15 +690,65 @@
           logoutBtn.style.display = "block";
           // header
           selectedPetHeader.innerHTML = `
-            <span style="display:flex; align-items:center; gap:6px;"><span style="font-size:1.8rem;">🐶</span> <strong style="font-size:1.5rem;">${petName}</strong> <span style="background:#fff; padding:0.2rem 0.7rem; border-radius:40px; font-size:0.75rem;">#${petId}</span></span>
-            <button id="backToPetsBtn" class="back-btn">← volver</button>
-          `;
+                  <span style="display:flex; align-items:center; gap:6px;"><span style="font-size:1.8rem;">🐶</span> <strong style="font-size:1.5rem;">${petName}</strong> <span style="background:#fff; padding:0.2rem 0.7rem; border-radius:40px; font-size:0.75rem;">#${petId}</span></span>
+                <div>
+                  <button id="backToPetsBtn" class="back-btn">← volver</button>
+                  <button id="sharePet"  class="add-owner-btn">Agregar dueño</button>
+                </div>
+                `;
           document
             .getElementById("backToPetsBtn")
             .addEventListener("click", () => {
               showPets();
             });
+          document.getElementById("sharePet")?.addEventListener("click", () => {
+            sharePets(selectedPetId);
+          });
+          deleteOwnership.addEventListener(
+            "click",
+            async () => {
+              const pet = Number(petId);
+              if (!JWT_TOKEN || isNaN(pet)) return showAuth();
+              if (
+                !confirm(
+                  "¿Estás seguro de que ya no quieres se dueño de esta mascota?",
+                ) ||
+                !confirm("Acepte para poder seguir")
+              )
+                return;
+              try {
+                const { res, data } = await request(
+                  `/api/pets/ownership?id=${pet}`,
+                  { method: "DELETE" },
+                );
+                if (res.status === 200) {
+                  alert("Ya no eres dueño de esta mascota");
+                  showPets();
+                } else {
+                  alert("error inesperado, intente de nuevo");
+                }
+              } catch (e) {
+                alert("Hubo un error intente de nuevo!");
+              }
+            },
+            { once: true },
+          );
           loadActivities(petId);
+        }
+
+        async function setUserData() {
+          try {
+            const { res, data } = await request("/api/users", {
+              method: "GET",
+            });
+            if (res.status === 200) {
+              userData.innerHTML = `<h3>👤 ${data.username}</h3><span class="pet-badge">ID ${data.userId}</span>`;
+            } else {
+              alert("error inesperado, intente de nuevo");
+            }
+          } catch (e) {
+            alert("error de red");
+          }
         }
 
         // ---------- LOGIN ----------
@@ -677,6 +770,7 @@
               const payload = parseJwt(data);
               if (payload?.userId) currentUserId = payload.userId;
               showPets();
+              setUserData();
               loginEmail.value = "";
               loginPass.value = "";
               loginError.innerText = "";
@@ -708,6 +802,7 @@
               const payload = parseJwt(data);
               if (payload?.userId) currentUserId = payload.userId;
               showPets();
+              setUserData();
               signName.value = "";
               signEmail.value = "";
               signPass.value = "";
@@ -789,11 +884,11 @@
           let html = "";
           pets.forEach((pet) => {
             html += `
-        <div class="pet-card" data-pet-id="${pet.id}" data-pet-name="${pet.name}">
-          <span class="pet-name">🐾 ${pet.name}</span>
-          <span class="pet-badge">ID ${pet.id}</span>
-        </div>
-      `;
+              <div class="pet-card" data-pet-id="${pet.id}" data-pet-name="${pet.name}">
+                <span class="pet-name">🐾 ${pet.name}</span>
+                <span class="pet-badge">ID ${pet.id}</span>
+              </div>
+            `;
           });
           petsList.innerHTML = html;
 
@@ -804,6 +899,29 @@
               showActivities(parseInt(id), name);
             });
           });
+        }
+        // ------- SHARE PETS ------
+        async function sharePets(petId) {
+          const pet = Number(petId);
+          if (!JWT_TOKEN || isNaN(pet)) {
+            alert("Vuelva a iniciar sesion!");
+            return;
+          }
+          const id = Number(prompt("Por favor ingresa el id de la persona:"));
+          if (isNaN(Number(id))) {
+            alert("Debe ser un numero!");
+            return;
+          }
+          try {
+            const { res, data } = await request(`/api/pets/share?id=${petId}`, {
+              method: "POST",
+              body: JSON.stringify({ newOwner: id, petId: pet }),
+            });
+            if (res.status === 201) alert("Dueño agregado!");
+            else alert("No se pudo agregar el dueño");
+          } catch (e) {
+            alert("Hubo un error intente de nuevo!");
+          }
         }
 
         // ---------- CARGAR ACTIVIDADES (por mascota) ----------
@@ -834,17 +952,25 @@
               selectedPetName = petData.name;
 
               selectedPetHeader.innerHTML = `
-          <span style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:1.8rem;">🐶</span>
-            <strong style="font-size:1.5rem;">${petData.name}</strong>
-            <span style="background:#fff; padding:0.2rem 0.7rem; border-radius:40px; font-size:0.75rem;">#${petData.id}</span>
-          </span>
-          <button id="backToPetsBtn" class="back-btn">← volver</button>
-        `;
+                <span style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:1.8rem;">🐶</span>
+                  <strong style="font-size:1.5rem;">${petData.name}</strong>
+                  <span style="background:#fff; padding:0.2rem 0.7rem; border-radius:40px; font-size:0.75rem;">#${petData.id}</span>
+                </span>
+                <div>
+                  <button id="backToPetsBtn" class="back-btn">← volver</button>
+                  <button id="sharePet" class="add-owner-btn">Agregar dueño</button>
+                </div>
+              `;
               document
                 .getElementById("backToPetsBtn")
                 ?.addEventListener("click", () => {
                   showPets();
+                });
+              document
+                .getElementById("sharePet")
+                ?.addEventListener("click", () => {
+                  sharePets(selectedPetId);
                 });
 
               renderActivities(activities);
@@ -859,6 +985,8 @@
           }
         }
 
+        // Reemplaza la función renderActivities con esta versión:
+
         function renderActivities(activities) {
           if (!activities || activities.length === 0) {
             activitiesContainer.innerHTML = `<div class="empty-state">📭 esta mascota no tiene actividades · crea una</div>`;
@@ -871,21 +999,36 @@
             const times = act.times ?? 1;
             const completed = act.completed || progress >= times;
             const percent = Math.min(100, Math.floor((progress / times) * 100));
+            // Formatear fecha
+            const fecha = new Date(act.created_at);
+            const fechaFormateada = fecha.toLocaleDateString("es", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
 
             html += `
-        <div class="activity-item ${completed ? "completed" : ""}" data-activity-id="${act.id}">
-          <div class="activity-info">
-            <h4>${act.name} ${act.description ? "· " + act.description : ""}</h4>
-            <p style="display:flex; gap:0.5rem; align-items:center;">
-              <span class="progress-badge">${progress}/${times}</span>
-              <span style="font-size:0.7rem; background:#e2eaee; padding:0.2rem 0.6rem; border-radius:20px;">
-                ${percent}%
-              </span>
-            </p>
-          </div>
-          ${!completed ? `<button class="btn-progress" data-act-id="${act.id}">+1 progreso</button>` : ""}
-        </div>
-      `;
+            <div class="activity-item ${completed ? "completed" : ""}" data-activity-id="${act.id}">
+              <div class="activity-info">
+                  </span>
+      <span style="font-size:0.7rem; background:#e2eaee; padding:0.01rem 0.2rem; border-radius:20px;">${fechaFormateada}</span>
+                </p>
+      <h4>${act.name} ${act.description ? "· " + act.description : ""} </h4>
+                <p style="display:flex; gap:0.5rem; align-items:center;">
+                  <span class="progress-badge">${progress}/${times}</span>
+                  <span style="font-size:0.7rem; background:#e2eaee; padding:0.2rem 0.6rem; border-radius:20px;">
+                    ${percent}%
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                ${
+                  !completed
+                    ? `<button class="btn-progress" data-act-id="${act.id}">+1</button>`
+                    : ""
+                }
+                <button class="btn-delete" data-act-id="${act.id}" title="Eliminar actividad">🗑️</button>
+              </div>
+            </div>
+          `;
           });
 
           activitiesContainer.innerHTML = html;
@@ -898,6 +1041,57 @@
               await incrementProgress(actId);
             });
           });
+
+          // botones eliminar
+          document.querySelectorAll(".btn-delete").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              const actId = btn.dataset.actId;
+              await deleteActivity(actId);
+            });
+          });
+        }
+
+        // Nueva función para eliminar actividad
+        async function deleteActivity(activityId) {
+          if (!JWT_TOKEN) return;
+
+          // Confirmar antes de eliminar
+          if (
+            !confirm("¿Estás seguro de que quieres eliminar esta actividad?")
+          ) {
+            return;
+          }
+
+          try {
+            const { res, data } = await request(
+              `/api/activity?id=${activityId}`,
+              {
+                method: "DELETE",
+              },
+            );
+
+            if (res.status === 200) {
+              // recargar actividades de la mascota seleccionada
+              if (selectedPetId) loadActivities(selectedPetId);
+              // Mostrar mensaje de éxito (opcional)
+              // alert('Actividad eliminada correctamente');
+            } else {
+              let msg = typeof data === "string" ? data : "no se pudo eliminar";
+
+              if (res.status === 403) {
+                alert("No eres dueño de esta mascota");
+              } else if (res.status === 404) {
+                alert("Actividad no encontrada");
+              } else if (res.status === 400) {
+                alert("La actividad ya está eliminada");
+              } else {
+                alert("Error: " + msg);
+              }
+            }
+          } catch (e) {
+            alert("Error al conectar con el servidor");
+          }
         }
         // ---------- INCREMENTAR PROGRESO (RPC) ----------
         async function incrementProgress(activityId) {
@@ -937,15 +1131,16 @@
             return;
           }
           activityError.innerText = "";
+          const activityBody = {
+            pet: selectedPetId,
+            name: name,
+            times: Number(times),
+          };
+          if (desc) activityBody.description = desc; // solo incluir descripción si no está vacía
           try {
             const { res } = await request("/api/activity", {
               method: "POST",
-              body: JSON.stringify({
-                pet: String(selectedPetId),
-                name: name,
-                times: String(times),
-                description: desc || undefined,
-              }),
+              body: JSON.stringify(activityBody),
             });
             if (res.status === 201) {
               newActName.value = "";
@@ -976,6 +1171,7 @@
             const payload = parseJwt(JWT_TOKEN);
             if (payload?.userId && payload.exp * 1000 > Date.now()) {
               currentUserId = payload.userId;
+              setUserData();
               showPets();
             } else {
               clearToken();

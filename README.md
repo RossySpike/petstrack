@@ -116,7 +116,7 @@ All endpoints start with **/api/** prefix, currently there are the followings:
 
 ---
 
-- **pets/?id={petId}**:
+- **pets?id={petId}**:
 
 ```JSON
 {
@@ -172,50 +172,9 @@ All endpoints start with **/api/** prefix, currently there are the followings:
 
 - Returns empty array `[]` if pet has no activities
 
----
-
-- **pets/** (GET):
-
-```JSON
-{
-  "method": "GET",
-  "headers": [{ "authorization": "Bearer JWT_TOKEN" }],
-  "response": {
-    "status": 200,
-    "body": [
-      {
-        "id": "number",
-        "name": "string"
-      }
-    ]
-  },
-  "errors": [
-    { "400": "Bad request / Missing Authorization header / Invalid user ID" },
-    { "401": "Invalid JWT" },
-    { "500": "Failed to read ownership / Unexpected error" }
-  ]
-}
-```
-
-**_NOTES_**:
-
-- Returns all pets owned by the authenticated user
-
-- Requires valid JWT token in Authorization header
-
-- Returns array of pet objects with id and name
-
-- User ID is extracted from JWT and parsed to number
-
-- Returns empty array `[]` if user has no pets
-
-- No request body required
-
-- Uses `ownership` table to map users to pets
-
   ***
 
-- **activity/** (POST):
+- **activity/** :
 
 ```json
 {
@@ -273,6 +232,172 @@ All endpoints start with **/api/** prefix, currently there are the followings:
 - Returns the complete created activity object on success
 
 - Returns 403 if the trigger detects the user doesn't own the specified `pet`
+
+---
+
+- **users/** :
+
+```JSON
+{
+  "method": "GET",
+  "headers": [{ "authorization": "Bearer JWT_TOKEN" }],
+  "response": {
+    "status": 200,
+    "body": {
+      "userId": "number",
+      "username": "string"
+    }
+  },
+  "errors": [
+    { "400": "Bad request -->Authorization: Bearer \"token\"" },
+    { "401": "Invalid jwt" }
+  ]
+}
+```
+
+**_NOTES_**:
+
+- Returns the authenticated user's id and username extracted from JWT.
+- Requires valid JWT token in Authorization header.
+- No request body required.
+
+---
+
+- **activity/increment?id={id}** :
+
+```JSON
+{
+  "method": "POST",
+  "headers": [{ "authorization": "Bearer JWT_TOKEN" }],
+  "query": {
+    "id": "number (required)"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": "number",
+      "progress": "number",
+      "completed": "boolean"
+    }
+  },
+  "errors": [
+    { "400": "Missing token / Invalid activity id" },
+    { "401": "Invalid jwt" },
+    { "404": "Activity not found or unauthorized" },
+    { "500": "Failed to increment / Unexpected error" }
+  ]
+}
+```
+
+**_NOTES_**:
+
+- Increments progress for a specific activity owned by the authenticated user.
+- Requires valid JWT token in Authorization header.
+- Activity id is passed as query parameter.
+- Returns updated activity progress and completion status.
+
+---
+
+- **activity?id={id}** :
+
+```JSON
+{
+  "method": "DELETE",
+  "headers": [{ "authorization": "Bearer JWT_TOKEN" }],
+  "query": {
+    "id": "number (required)"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": "number",
+      "deleted": "boolean"
+    }
+  },
+  "errors": [
+    { "400": "Missing token / Invalid activity id / Activity already deleted" },
+    { "401": "Invalid jwt" },
+    { "403": "You are not an owner of this pet" },
+    { "404": "Activity not found" },
+    { "500": "Failed to delete activity / Unexpected error" }
+  ]
+}
+```
+
+**_NOTES_**:
+
+- Deletes (marks as deleted) a specific activity owned by the authenticated user.
+- Requires valid JWT token in Authorization header.
+- Activity id is passed as query parameter.
+- Returns deletion status.
+
+---
+
+- **pets/share/** :
+
+```JSON
+{
+  "method": "POST",
+  "headers": [
+    { "content-type": "application/json" },
+    { "authorization": "Bearer JWT_TOKEN" }
+  ],
+  "body": {
+    "newOwner": "number",
+    "petId": "number"
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "success": "boolean",
+      "message": "string"
+    }
+  },
+  "errors": [
+    { "400": "Missing token / Invalid parameters / Supabase error" },
+    { "401": "Invalid jwt" },
+    { "500": "Unexpected error" }
+  ]
+}
+```
+
+**_NOTES_**:
+
+- Shares a pet with another user (adds new ownership).
+- Requires valid JWT token in Authorization header.
+- Body must include newOwner (user id) and petId.
+- Returns success and message.
+
+---
+
+- **pets/ownership?id={id}** :
+
+```JSON
+{
+  "method": "DELETE",
+  "headers": [{ "authorization": "Bearer JWT_TOKEN" }],
+  "query": {
+    "id": "number (required)"
+  },
+  "response": {
+    "status": 200,
+    "body": ""
+  },
+  "errors": [
+    { "400": "Bad request -->Authorization: Bearer \"token\" / Invalid pet id" },
+    { "401": "Invalid jwt" },
+    { "404": "Relation not found" },
+    { "500": "Unexpected error" }
+  ]
+}
+```
+
+**_NOTES_**:
+
+- Removes ownership relation for a pet and authenticated user.
+- Requires valid JWT token in Authorization header.
+- Pet id is passed as query parameter.
+- Returns empty body on success.
 
 ---
 

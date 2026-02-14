@@ -61,10 +61,9 @@ async function createJWT(payload: Payload): Promise<string> {
 async function verifyJWT(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    console.log("JWT is valid:", payload);
     return payload;
   } catch (error) {
-    console.error("Invalid JWT:", error);
+    console.error("Error verifying JWT:", error);
     return null;
   }
 }
@@ -84,14 +83,15 @@ async function validateRoleJWT(jwt: string, role: string) {
 
 //NOTE: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 //NOTE: validation >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+type BodyValidator = { key: string; type: string; notRequired?: true };
 type Validators =
   | {
       headers: { key: string; value?: string }[];
-      body?: { key: string; type: string }[];
+      body?: BodyValidator[];
     }
   | {
       headers?: { key: string; value?: string }[];
-      body: { key: string; type: string }[];
+      body: BodyValidator[];
     };
 async function validateRequest<T = any>(
   request: Request,
@@ -116,6 +116,10 @@ async function validateRequest<T = any>(
     try {
       payload = await request.json();
     } catch (e) {
+      console.error("[-] Something happened while trying to parse body:");
+      console.error("[-] Body content:");
+      console.error(await request.text());
+      console.error(e);
       return {
         valid: false,
         data: new Response(`Empty body`, {
@@ -126,6 +130,7 @@ async function validateRequest<T = any>(
     }
 
     for (let entry of validators.body) {
+      if (entry?.notRequired === true && !(entry.key in payload)) continue;
       if (!(entry.key in payload) || typeof payload[entry.key] !== entry.type)
         return {
           valid: false,
@@ -153,6 +158,34 @@ function isValidEmail(email: any): email is string {
 }
 //NOTE: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 //NOTE: endpoints >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+async function getMyData(url: URL, request: Request) {
+  if (url.pathname !== "/api/users" || request.method !== "GET")
+    return undefined;
+  // Sanitize req
+  const validation = await validateRequest(request, {
+    headers: [{ key: "authorization" }],
+  });
+  if (!validation.valid) return validation.data;
+  const jwt = extractJWT(request);
+  if (jwt.length === 0)
+    return new Response(`Bad request -->Authorization: Bearer "token"`, {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  const jwtData: Payload | null = await verifyJWT(jwt);
+  if (jwtData === null)
+    return new Response("Invalid jwt", {
+      status: 401,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+    });
+  return new Response(
+    JSON.stringify({ userId: jwtData.userId, username: jwtData.username }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
 async function login(url: URL, request: Request) {
   if (url.pathname === "/api/login" && request.method === "POST") {
     // Sanitize req
@@ -221,6 +254,7 @@ async function login(url: URL, request: Request) {
     } catch (e) {
       console.error("[-] Something happened while trying to login:");
       console.error(e);
+      console.error(await request.text());
       return new Response(`Unexpected error`, {
         status: 500,
         headers: { "Content-Type": "text/plain" },
@@ -305,6 +339,7 @@ async function signin(url: URL, request: Request) {
         "[-] Something happened while trying to insert into owners:",
       );
       console.error(e);
+      console.error(await request.text());
       return new Response(`Unexpected error`, {
         status: 500,
         headers: { "Content-Type": "text/plain" },
@@ -372,6 +407,7 @@ async function getMyPets(url: URL, request: Request) {
         times,
         progress,
         completed,
+        deleted,
         created_at
       )
     )
@@ -385,7 +421,6 @@ async function getMyPets(url: URL, request: Request) {
       })
       .single();
   }
-  /**/
 
   try {
     const { data, error } = await query;
@@ -403,13 +438,19 @@ async function getMyPets(url: URL, request: Request) {
       });
     }
 
+    console.log(data);
+    if (!Array.isArray(data) && "activity" in data?.pets) {
+      data.pets.activity = data.pets.activity.filter((a) => !a.deleted);
+    }
+    console.log(data);
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("[-] Something happened while trying to add a pet:");
+    console.error("[-] Something happened while trying to read a pet:");
     console.error(e);
+    console.error(await request.text());
     return new Response(`Unexpected error`, {
       status: 500,
       headers: { "Content-Type": "text/plain" },
@@ -478,6 +519,7 @@ async function addPet(url: URL, request: Request) {
   } catch (e) {
     console.error("[-] Something happened while trying to add a pet:");
     console.error(e);
+    console.error(await request.text());
     return new Response(`Unexpected error`, {
       status: 500,
       headers: { "Content-Type": "text/plain" },
@@ -496,9 +538,10 @@ async function addActivity(url: URL, request: Request) {
       { key: "authorization" },
     ],
     body: [
-      { key: "pet", type: "string" },
+      { key: "pet", type: "number" },
       { key: "name", type: "string" },
-      { key: "times", type: "string" },
+      { key: "times", type: "number" },
+      { key: "description", type: "string", notRequired: true },
     ],
   });
 
@@ -581,6 +624,7 @@ async function addActivity(url: URL, request: Request) {
       "[-] Something happened while trying to insert into activity:",
     );
     console.error(e);
+    console.error(await request.text());
     return new Response(`Unexpected error`, {
       status: 500,
       headers: { "Content-Type": "text/plain" },
@@ -623,10 +667,212 @@ async function incrementActivityProgress(url: URL, request: Request) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
+    console.error(
+      "[-] Something happened while trying to incrementActivityProgress:",
+    );
+    console.error(e);
+    console.error(await request.text());
     return new Response("Unexpected error", { status: 500 });
   }
 }
+async function deleteActivity(url: URL, request: Request) {
+  if (url.pathname !== "/api/activity" || request.method !== "DELETE")
+    return undefined;
 
+  // Validar JWT
+  const jwt = extractJWT(request);
+  if (!jwt)
+    return new Response("Missing token", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  const jwtData = await verifyJWT(jwt);
+  if (!jwtData)
+    return new Response("Invalid jwt", {
+      status: 401,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  // Obtener ID de la actividad
+  const activityId = Number(url.searchParams.get("id"));
+  if (isNaN(activityId))
+    return new Response("Invalid activity id", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  try {
+    // Llamar a la función SQL
+    const { data, error } = await SUPABASE.rpc("delete_activity", {
+      activity_id: activityId,
+      user_id: Number(jwtData.userId),
+    });
+
+    if (error) {
+      console.log(error);
+
+      // Manejar errores específicos
+      if (error.message.includes("not found")) {
+        return new Response("Activity not found", {
+          status: 404,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+
+      if (error.message.includes("already deleted")) {
+        return new Response("Activity already deleted", {
+          status: 400,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+
+      if (
+        error.message.includes("Unauthorized") ||
+        error.message.includes("not an owner")
+      ) {
+        return new Response("You are not an owner of this pet", {
+          status: 403,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+
+      return new Response("Failed to delete activity", {
+        status: 500,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("[-] Something happened while deleting activity:");
+    console.error(e);
+    console.error(await request.text());
+    return new Response("Unexpected error", {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+}
+async function sharePet(url: URL, request: Request) {
+  if (url.pathname !== "/api/pets/share" || request.method !== "POST")
+    return undefined;
+
+  const jwt = extractJWT(request);
+  if (!jwt) return new Response("Missing token", { status: 400 });
+
+  const jwtData = await verifyJWT(jwt);
+  if (!jwtData) return new Response("Invalid jwt", { status: 401 });
+
+  // Validar body
+  const validation = await validateRequest(request, {
+    headers: [{ key: "content-type", value: "application/json" }],
+    body: [
+      { key: "newOwner", type: "number" },
+      { key: "petId", type: "number" },
+    ],
+  });
+
+  if (!validation.valid) return validation.data;
+
+  const { newOwner, petId } = validation.data;
+
+  try {
+    const { data, error } = await SUPABASE.rpc("share_pet", {
+      p_owner1_id: jwtData.userId,
+      p_owner2_id: newOwner,
+      p_pet_id: petId,
+    });
+
+    if (error) {
+      return new Response(error.message, {
+        status: 400,
+        headers: { "Content-Type": "text/plain" },
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: data,
+      }),
+      {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  } catch (e) {
+    console.error("[-] Something happened while sharing pet:");
+    console.error(e);
+    console.error(await request.text());
+    return new Response("Unexpected error", { status: 500 });
+  }
+}
+//NOTE: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+async function deleteOwnership(url: URL, request: Request) {
+  if (url.pathname !== "/api/pets/ownership" || request.method !== "DELETE") {
+    return undefined;
+  }
+  const validation = await validateRequest(request, {
+    headers: [{ key: "authorization" }],
+  });
+  if (!validation.valid) return validation.data;
+  const jwt = extractJWT(request);
+  if (jwt.length === 0)
+    return new Response(`Bad request -->Authorization: Bearer "token"`, {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+
+  const jwtData: Payload | null = await verifyJWT(jwt);
+  if (jwtData === null)
+    return new Response("Invalid jwt", {
+      status: 401,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+    });
+
+  const petId = Number(url.searchParams.get("id"));
+  if (isNaN(petId))
+    return new Response("Invalid pet id", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+  try {
+    const { error, count } = await SUPABASE.from("ownership")
+      .delete()
+      .eq("owner", jwtData.userId)
+      .eq("pet", petId)
+      .select();
+    if (error && !count)
+      return new Response("Relation not found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain",
+        },
+      });
+    if (error)
+      return new Response(`Unexpected error`, {
+        status: 500,
+        headers: { "Content-Type": "text/plain" },
+      });
+    return new Response("", { status: 200 });
+  } catch (e) {
+    console.error(
+      "[-] Something happened while trying to delete an ownership row:",
+    );
+    console.error(e);
+    console.error(await request.text());
+    return new Response(`Unexpected error`, {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+}
 async function health(url: URL, request: Request) {
   if (url.pathname === "/api/health" && request.method === "GET") {
     const { data, error } = await SUPABASE.from("pets").select("id");
@@ -643,10 +889,14 @@ const endpoints: Array<
 > = [
   login,
   signin,
+  getMyData,
   addPet,
   getMyPets,
+  sharePet,
   addActivity,
   incrementActivityProgress,
+  deleteActivity,
+  deleteOwnership,
   health,
 ];
 
